@@ -116,11 +116,11 @@ describe CSVImporter do
     when_invalid :skip # or :abort
 
     after_read do |csv|
-      csv.rows.each do |row_array|
+      csv.rows.each_with_index do |row_array, line_number|
         # Many first_names ','-delimited means
         # create a new user with that name
         first_names = csv.get_from_row_array(row_array, "first_name").split(',')
-        csv.set_in_row_array(row_array, "first_name", first_names.shift)
+        csv.set_in_row_array(line_number, "first_name", first_names.shift)
         first_names.each do |fn|
           add_row(
               email: "#{fn}@example.com",
@@ -541,6 +541,18 @@ bob@example.com,false,bob,,|
     expect(import.message).to eq "Import completed: 1 created"
   end
 
+  describe ".set_in_row_array" do
+    it "sets values" do
+      csv_content = 'email,confirmed,first_name,last_name
+      bob@example.com,true,"bob, jim, steve",,'
+
+      importer = ImportUserCommaDelmitedFirstNameCSV.new(content: csv_content)
+      importer.run!
+
+      expect(User.store.map(&:f_name)).to include "bob"
+    end
+  end
+
   describe ".add_row" do
     it "adds a row to the CSVReader" do
       csv_content = "email,confirmed,first_name,last_name
@@ -579,11 +591,11 @@ bob@example.com,false,bob,,|
 
     it "creates rows at runtime" do
       csv_content = 'email,confirmed,first_name,last_name
-      bob@example.com,true,"bob, jim",jones,'
+      bob@example.com,true,"bob, jim, steve",jones,'
       import = ImportUserCommaDelmitedFirstNameCSV.new(content: csv_content)
       import.run!
 
-      expect(import.report.message).to eq "Import completed: 2 created"
+      expect(import.report.message).to eq "Import completed: 3 created"
 
       model = import.report.created_rows.first.model
       expect(model).to be_persisted
@@ -598,6 +610,14 @@ bob@example.com,false,bob,,|
       expect(model).to have_attributes(
         email: "jim@example.com",
         f_name: "jim",
+        l_name: "jones"
+      )
+
+      model = import.report.created_rows[2].model
+      expect(model).to be_persisted
+      expect(model).to have_attributes(
+        email: "steve@example.com",
+        f_name: "steve",
         l_name: "jones"
       )
     end

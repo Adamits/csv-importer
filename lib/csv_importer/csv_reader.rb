@@ -52,10 +52,10 @@ module CSVImporter
     end
 
     # Sets the value for a specific row array at the header_string column
-    def set_in_row_array(row_array, header_string, val)
+    def set_in_row_array(line_number, header_string, val)
       idx = header.index(header_string)
-      if row_array.size >= idx
-        row_array[idx] = val
+      if rows[line_number].size >= idx
+        rows[line_number][idx] = val
       end
     end
 
